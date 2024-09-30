@@ -25,16 +25,16 @@ This is a simple command-line application for managing a database of campy B-hor
    ```
 
 3. Create a virtual environemnt if you'd like
-```
-python -m venv .venv 
+    ```
+    python -m venv .venv 
 
-# On Windows:
-.venv\Scripts\activate
+    # On Windows:
+    .venv\Scripts\activate
 
-# On macOS and Linux:
-source .venv/bin/activate
+    # On macOS and Linux:
+    source .venv/bin/activate
 
-```
+    ```
 
 4. Install the required packages:
    ```
