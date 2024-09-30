@@ -1,6 +1,6 @@
-# Campy B-Horror Movie Database
+# Campy B-Horror Movie Database (SQL Version)
 
-This is a simple command-line application for managing a database of campy B-horror movies. It allows users to add, view, update, and delete movie entries in a MongoDB database. There's no front end, just some CRUD functions.
+This is a simple command-line application for managing a database of campy B-horror movies. It allows users to add, view, update, and delete movie entries in a MySQL database. There's no front end, just some CRUD functions.
 
 ## Amazing Features
 
@@ -12,19 +12,22 @@ This is a simple command-line application for managing a database of campy B-hor
 ## Prerequisites
 
 - Python 3.11 or higher
-- MongoDB Atlas account (or a local MongoDB installation if you'd like)
+- MySQL server - provided for you
 - pip (Python package manager)
 
 ## Setup
 
-1. Clone this repository or download the source code. `git clone https://github.com/projects-in-programming-f24/campy.git`
+1. Clone this repository or download the source code.
+   ```
+   git clone https://github.com/projects-in-programming-f24/campy.git
+   ```
 
 2. Navigate to the project directory:
    ```
    cd path/to/campy-b-horror-movie-database
    ```
 
-3. Create a virtual environemnt if you'd like
+3. Create a virtual environment if you'd like:
     ```
     python -m venv .venv 
 
@@ -33,7 +36,6 @@ This is a simple command-line application for managing a database of campy B-hor
 
     # On macOS and Linux:
     source .venv/bin/activate
-
     ```
 
 4. Install the required packages:
@@ -41,11 +43,26 @@ This is a simple command-line application for managing a database of campy B-hor
    pip install -r requirements.txt
    ```
 
-5. Create a `.env` file in the project root directory with your MongoDB connection string:
-   ```
-   MONGODB_URI=your_mongodb_connection_string_here
-   ```
-   Replace `your_mongodb_connection_string_here` with your actual MongoDB connection string from Atlas.
+5. Set up your .env file:
+   a. Create a new file in the project root directory and name it `.env`
+   b. Open the `.env` file in a text editor
+   c. Add your MySQL connection details in the following format:
+      ```
+      DB_HOST=your_mysql_host
+      DB_USER=your_mysql_username
+      DB_PASS=your_mysql_password
+      DB_NAME=your_database_name
+      ```
+   d. Replace the placeholders with your actual MySQL connection details (provided for you on Slack). For example:
+      ```
+      DB_HOST=34.123.45.67
+      DB_USER=myuser
+      DB_PASS=mypassword
+      DB_NAME=campy_movies
+      ```
+   e. Save and close the `.env` file
+
+   Note: The `.env` file contains sensitive information. Make sure it's included in your `.gitignore` file to prevent it from being committed to version control. PLEASE DO NOT LEAK THIS!!!
 
 ## Usage
 

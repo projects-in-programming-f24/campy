@@ -1,123 +1,136 @@
 import os
 from dotenv import load_dotenv
-import pymongo
-from bson.objectid import ObjectId
+import mysql.connector
+from mysql.connector import Error
 
 load_dotenv()
-mongodb_uri = os.getenv('MONGODB_URI')
-print(mongodb_uri)
 
-# note: you could put this db code in another file if you're feeling fancy
-try:
-    client = pymongo.MongoClient(mongodb_uri) # this creates a client that can connect to our DB
-    print("Databases available:")
-    print(client.list_database_names()) # just to make sure you are connecting to the right server...
-    db = client.get_database("campy") # this gets the database named 'campy'
-    movies = db.get_collection("movies") # this gets the collection named 'movies'
-    
-    client.server_info() # this is a hack to force the client to connect to the server so we can error out
-    print("Connected successfully to the 'campy' database!")
-except pymongo.errors.ConnectionFailure as e:
-    print(f"Could not connect to MongoDB: {e}")
-    exit(1)
+def create_connection():
+    connection = None
+    try:
+        # Print connection details (be careful with this in production!)
+        print(f"Attempting to connect to:")
+        print(f"Host: {os.getenv('DB_HOST')}")
+        print(f"User: {os.getenv('DB_USER')}")
+        print(f"Database: {os.getenv('DB_NAME')}")
+        
+        connection = mysql.connector.connect(
+            host=os.getenv('DB_HOST'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASS'),
+            database=os.getenv('DB_NAME')
+        )
+        print("Successfully connected to the database")
+    except Error as e:
+        print(f"Error connecting to MySQL: {e}")
+        print(f"Error Code: {e.errno}")
+        print(f"SQL State: {e.sqlstate}")
+        print(f"Error Message: {e.msg}")
+    return connection
 
-def add_movie():
+# Create table if it doesn't exist
+def create_table(connection):
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS movies (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        year INT,
+        director VARCHAR(255),
+        plot TEXT,
+        budget DECIMAL(10, 2)
+    )
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(create_table_query)
+            connection.commit()
+            print("Table 'movies' created successfully")
+    except Error as e:
+        print(f"Error creating table: {e}")
+
+def add_movie(connection):
     title = input("Enter movie title: ")
     year = int(input("Enter release year: "))
     director = input("Enter director name: ")
     plot = input("Enter brief plot summary: ")
     budget = float(input("Enter movie budget: "))
     
-    movie = {
-        "title": title,
-        "year": year,
-        "director": director,
-        "plot": plot,
-        "budget": budget
-    }
+    query = """
+    INSERT INTO movies (title, year, director, plot, budget)
+    VALUES (%s, %s, %s, %s, %s)
+    """
+    values = (title, year, director, plot, budget)
     
     try:
-        result = movies.insert_one(movie)
-        print(f"Movie added with ID: {result.inserted_id}")
-    except pymongo.errors.PyMongoError as e:
-        print(f"An error occurred while adding the movie: {e}")
+        with connection.cursor() as cursor:
+            cursor.execute(query, values)
+            connection.commit()
+            print(f"Movie added with ID: {cursor.lastrowid}")
+    except Error as e:
+        print(f"Error adding movie: {e}")
 
-def view_movies():
+def view_movies(connection):
+    query = "SELECT * FROM movies"
     try:
-        movie_count = movies.count_documents({})
-        if movie_count == 0:
-            print("No movies found in the database.")
-        else:
-            for movie in movies.find():
-                print(f"\nID: {movie['_id']}")
-                print(f"Title: {movie['title']}")
-                print(f"Year: {movie['year']}")
-                print(f"Director: {movie['director']}")
-                print(f"Plot: {movie['plot']}")
-                print(f"Budget: ${movie['budget']}")
-    except pymongo.errors.PyMongoError as e:
-        print(f"An error occurred while retrieving movies: {e}")
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            results = cursor.fetchall()
+            if not results:
+                print("No movies found in the database.")
+            else:
+                for movie in results:
+                    print(f"\nID: {movie[0]}")
+                    print(f"Title: {movie[1]}")
+                    print(f"Year: {movie[2]}")
+                    print(f"Director: {movie[3]}")
+                    print(f"Plot: {movie[4]}")
+                    print(f"Budget: ${movie[5]}")
+    except Error as e:
+        print(f"Error retrieving movies: {e}")
 
-def add_movie():
-    title = input("Enter movie title: ")
-    year = int(input("Enter release year: "))
-    director = input("Enter director name: ")
-    plot = input("Enter brief plot summary: ")
-    budget = float(input("Enter movie budget: "))
-    
-    movie = {
-        "title": title,
-        "year": year,
-        "director": director,
-        "plot": plot,
-        "budget": budget
-    }
-    
-    result = movies.insert_one(movie)
-    print(f"Movie added with ID: {result.inserted_id}")
-
-def view_movies():
-    for movie in movies.find():
-        print(f"\nID: {movie['_id']}")
-        print(f"Title: {movie['title']}")
-        print(f"Year: {movie['year']}")
-        print(f"Director: {movie['director']}")
-        print(f"Plot: {movie['plot']}")
-        print(f"Budget: ${movie['budget']}")
-
-# a note on updating in MongoDB: you can update one document or many documents at a time
-# I used the $set operator here for a few important reasons:
-    # $set allows us to update only the specified field(s) without affecting other fields in the document. cheaper, faster.
-    # If the field doesn't exist, $set will add it to the document without altering the structure of existing fields.
-    # Without $set, you might accidentally replace the entire document with just the updated field. I do this all the time by accident
-def update_movie():
+def update_movie(connection):
     movie_id = input("Enter the ID of the movie to update: ")
     field = input("Enter the field to update (title/year/director/plot/budget): ")
     value = input("Enter the new value: ")
     
-    if field == 'year' or field == 'budget':
-        value = float(value)
+    query = f"UPDATE movies SET {field} = %s WHERE id = %s"
+    values = (value, movie_id)
     
-    result = movies.update_one(
-        {"_id": ObjectId(movie_id)},
-        {"$set": {field: value}}
-    )
-    
-    if result.modified_count:
-        print("Movie updated successfully!")
-    else:
-        print("No movie found with that ID.")
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query, values)
+            connection.commit()
+            if cursor.rowcount:
+                print("Movie updated successfully!")
+            else:
+                print("No movie found with that ID.")
+    except Error as e:
+        print(f"Error updating movie: {e}")
 
-def delete_movie():
+def delete_movie(connection):
     movie_id = input("Enter the ID of the movie to delete: ")
     
-    result = movies.delete_one({"_id": ObjectId(movie_id)})
+    query = "DELETE FROM movies WHERE id = %s"
+    value = (movie_id,)
     
-    if result.deleted_count:
-        print("Movie deleted successfully!")
-    else:
-        print("No movie found with that ID.")
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query, value)
+            connection.commit()
+            if cursor.rowcount:
+                print("Movie deleted successfully!")
+            else:
+                print("No movie found with that ID.")
+    except Error as e:
+        print(f"Error deleting movie: {e}")
+
 def main():
+    connection = create_connection()
+    if connection is None:
+        return
+    
+    create_table(connection)
+    
     while True:
         print("\nCampy B-Horror Movie Database")
         print("1. Add a movie")
@@ -129,19 +142,19 @@ def main():
         choice = input("Enter your choice (1-5): ")
         
         if choice == '1':
-            add_movie()
+            add_movie(connection)
         elif choice == '2':
-            view_movies()
+            view_movies(connection)
         elif choice == '3':
-            update_movie()
+            update_movie(connection)
         elif choice == '4':
-            delete_movie()
+            delete_movie(connection)
         elif choice == '5':
             break
         else:
             print("Invalid choice. Please try again.")
 
-    client.close()
+    connection.close()
     print("Goodbye!")
 
 if __name__ == "__main__":
