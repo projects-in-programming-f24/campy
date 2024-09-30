@@ -52,7 +52,7 @@ This is a simple command-line application for managing a database of campy B-hor
 To run the application:
 
 ```
-python campy_app.py
+python main.py
 ```
 
 Follow the on-screen prompts to interact with the database:
